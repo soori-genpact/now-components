@@ -1,55 +1,37 @@
 @import '@servicenow/sass-kit/host';
 
-/* ---- Design tokens (fall back to Next Experience theme vars) ---- */
-$card-bg: var(--now-color--surface, #ffffff);
-$card-border: var(--now-color--divider--secondary, #e9eaee);
-$text-strong: var(--now-color--primary, #1c2331);
-$text-muted: var(--now-color--secondary, #5a6473);
-
-$icon-bg: #eef1fb;
-$icon-fg: #1c2331;
-
-$good-bg: #e4f6ec;
-$good-fg: #18794e;
-$bad-bg: #fde8ec;
-$bad-fg: #d63b5e;
-$neutral-bg: #eef0f4;
-$neutral-fg: #6c7689;
+/* Standard components: now-card (container/click/a11y) + now-icon.
+ * Owned (documented exceptions, see index.js): the heading caption, the KPI
+ * value, and the trend pill — tuned to the Figma. We never pierce a composed
+ * component's shadow DOM; we only style our own markup and the now-card host box. */
 
 :host {
 	display: block;
 	font-family: var(--now-font-family, 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
-	color: $text-strong;
+	color: var(--now-color--primary, #1c2331);
 }
 
-/* ---- Card ------------------------------------------------------- */
+/* Let now-card own the card chrome — border, radius, shadow, background.
+ * On the Australia instance this renders the proper rounded white Horizon card.
+ * We deliberately do NOT set border-radius / overflow / box-shadow / background
+ * on the host: those would clip or double-up the real now-card's shadow and focus
+ * ring on the instance (and can't round now-card's internal square border anyway,
+ * which is what made the radius look "lost" in the local Rome-era preview). */
 .mc-card {
+	display: block;
+}
+
+/* Layout inside the card. now-card adds ~16px of its own padding, so keep ours
+ * small to land near the Figma's ~20-24px inset. */
+.mc-row {
 	display: flex;
-	align-items: center;
-	gap: 16px;
-	padding: 20px 24px;
-	background: $card-bg;
-	border: 1px solid $card-border;
-	border-radius: 16px;
-	box-shadow: 0 1px 2px rgba(28, 35, 49, 0.04);
+	align-items: flex-start;
+	gap: 18px;
+	padding: 6px;
 	box-sizing: border-box;
 }
 
-.mc-card--clickable {
-	cursor: pointer;
-	transition: box-shadow 0.12s ease, transform 0.12s ease, border-color 0.12s ease;
-}
-.mc-card--clickable:hover {
-	box-shadow: 0 4px 14px rgba(28, 35, 49, 0.1);
-	border-color: #d7dae1;
-	transform: translateY(-1px);
-}
-.mc-card--clickable:focus-visible {
-	outline: 2px solid var(--now-color--interactive, #2f6fed);
-	outline-offset: 2px;
-}
-
-/* ---- Icon tile -------------------------------------------------- */
+/* Icon tile (owned). */
 .mc-icon {
 	flex-shrink: 0;
 	width: 56px;
@@ -58,77 +40,76 @@ $neutral-fg: #6c7689;
 	align-items: center;
 	justify-content: center;
 	border-radius: 14px;
-	background: $icon-bg;
-	color: $icon-fg;
-	--now-icon--size: 24px;
+	background: var(--now-color--accent--tertiary, #e9eefb);
+	color: var(--now-color--primary, #1c2331);
+	--now-icon--size: 26px;
 }
-.mc-icon now-icon {
-	color: inherit;
-}
+.mc-icon now-icon { color: inherit; }
 .mc-icon-glyph {
-	font-size: 24px;
+	font-size: 28px;
 	font-weight: 700;
 	line-height: 1;
 	color: inherit;
 }
 
-/* ---- Body ------------------------------------------------------- */
 .mc-body {
 	min-width: 0;
 	flex: 1;
-}
-.mc-heading {
-	font-size: 15px;
-	font-weight: 500;
-	color: $text-muted;
-	line-height: 1.3;
-	margin-bottom: 6px;
-}
-.mc-value {
-	font-size: 34px;
-	font-weight: 700;
-	color: $text-strong;
-	line-height: 1.1;
-	letter-spacing: -0.01em;
-	word-break: break-word;
+	padding-top: 2px;
 }
 
-/* ---- Trend ------------------------------------------------------ */
+/* Heading caption (owned exception) — small, muted, regular weight. */
+.mc-heading {
+	font-size: 15px;
+	font-weight: 400;
+	color: var(--now-color--secondary, #6b7280);
+	line-height: 1.35;
+	margin: 0 0 2px;
+}
+
+/* KPI value (owned exception) — large, semibold. */
+.mc-value {
+	font-size: 28px;
+	font-weight: 600;
+	color: var(--now-color--primary, #1c2331);
+	line-height: 1.2;
+	letter-spacing: -0.01em;
+	word-break: break-word;
+	margin: 0 0 12px;
+}
+
+/* Trend row: owned pill (documented exception) + period caption. */
 .mc-trend {
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	margin-top: 12px;
+	gap: 10px;
 }
-.mc-trend-pill {
+.mc-pill {
 	display: inline-flex;
 	align-items: center;
 	gap: 4px;
-	padding: 2px 8px;
-	border-radius: 8px;
+	padding: 3px 8px;
+	border-radius: 6px;
 	font-size: 13px;
 	font-weight: 600;
-	line-height: 1.4;
+	line-height: 1.3;
 	white-space: nowrap;
-}
-.mc-trend-arrow {
-	font-size: 13px;
-	line-height: 1;
 }
 .mc-trend-period {
 	font-size: 13px;
-	color: $text-muted;
+	color: var(--now-color--secondary, #6b7280);
 }
 
-.mc--good {
-	background: $good-bg;
-	color: $good-fg;
-}
+/* Tone colors for the pill (soft tint bg + strong text), matching the Figma. */
 .mc--bad {
-	background: $bad-bg;
-	color: $bad-fg;
+	background: #fde8ec;
+	color: #d12b4c;
+}
+.mc--good {
+	background: #e4f6ec;
+	color: #18794e;
 }
 .mc--neutral {
-	background: $neutral-bg;
-	color: $neutral-fg;
+	background: #eef0f4;
+	color: #6c7689;
 }

@@ -1,65 +1,55 @@
 import { createCustomElement } from '@servicenow/ui-core';
 import snabbdom from '@servicenow/ui-renderer-snabbdom';
+import '@servicenow/now-card/src/now-card';
 import '@servicenow/now-icon/src/now-icon';
 import styles from './styles.scss';
 
 /* ------------------------------------------------------------------ *
  * x-gegis-library-metric-card
- * A production-grade KPI / metric card for ServiceNow Next Experience.
+ * A configurable KPI / metric card for ServiceNow Next Experience.
  *
- * Renders a single configurable stat: an icon tile, a heading, a large
- * formatted value, and an optional trend pill (e.g. "↓ 4.2%  MoM").
+ * Per SERVICENOW_CUSTOM_COMPONENT_DEV_RULES.md §0/§5:
+ *   - Standard component used for the container: now-card (border, shadow,
+ *     click interaction + a11y) and now-icon for the icon.
+ *   - DOCUMENTED EXCEPTIONS (no standard component matches the design spec,
+ *     so these are owned typography/markup, styled in styles.scss):
+ *       * the heading caption  (now-heading renders a fixed heading scale,
+ *         not this small muted label),
+ *       * the large KPI value  (no design-system "big number" component),
+ *       * the trend pill        (now-highlighted-value has a fixed look /
+ *         no size prop and cannot reproduce the soft-pink/red KPI pill).
  *
- * Every field is exposed as a component property so the card can be
- * configured entirely from UI Builder — see now-ui.json for the panel
- * definitions.
+ * Public properties + now-ui.json config are unchanged.
  * ------------------------------------------------------------------ */
 
 /* ---- Formatting helpers ---------------------------------------- */
-
-/* Parse a property that may arrive as a string ("25", "-4.2") or a
- * number. Returns a finite Number, or NaN when not parseable. */
 const toNumber = (raw) => {
 	if (raw === null || raw === undefined || raw === '') return NaN;
 	if (typeof raw === 'number') return raw;
-	// Strip grouping/symbols a user might paste in (e.g. "1,250" / "$25%").
 	const cleaned = String(raw).replace(/[^0-9.\-]/g, '');
 	return cleaned === '' ? NaN : Number(cleaned);
 };
 
-/* Format the main value according to the chosen `format`. Falls back to
- * the raw string when the value isn't numeric (e.g. "N/A"). */
 const formatValue = ({ value, format, decimals, currencySymbol }) => {
 	const num = toNumber(value);
 	if (Number.isNaN(num)) return value === '' || value == null ? '—' : String(value);
-
 	const places = Math.max(0, Number(decimals) || 0);
-	const fixed = num.toLocaleString(undefined, {
-		minimumFractionDigits: places,
-		maximumFractionDigits: places,
-	});
-
+	const fixed = num.toLocaleString(undefined, { minimumFractionDigits: places, maximumFractionDigits: places });
 	switch (format) {
-		case 'percent':
-			return `${fixed}%`;
-		case 'currency':
-			return `${currencySymbol || ''}${fixed}`;
-		case 'number':
-			return fixed;
+		case 'percent': return `${fixed}%`;
+		case 'currency': return `${currencySymbol || ''}${fixed}`;
+		case 'number': return fixed;
 		case 'none':
-		default:
-			return String(value);
+		default: return String(value);
 	}
 };
 
-/* Resolve trend direction. "auto" derives it from the sign of the delta. */
 const resolveDirection = (direction, delta) => {
 	if (direction && direction !== 'auto') return direction;
 	if (Number.isNaN(delta) || delta === 0) return 'flat';
 	return delta > 0 ? 'up' : 'down';
 };
 
-/* Map a direction + semantics to a visual tone (good / bad / neutral). */
 const resolveTone = (direction, positiveIsGood) => {
 	if (direction === 'flat') return 'neutral';
 	const isGood = direction === 'up' ? positiveIsGood : !positiveIsGood;
@@ -68,93 +58,52 @@ const resolveTone = (direction, positiveIsGood) => {
 
 const ARROW = { up: '↑', down: '↓', flat: '→' };
 
-/* ---- Sub-views -------------------------------------------------- */
-
+/* ---- Trend pill (owned — documented exception) ----------------- */
 const TrendPill = ({ trendValue, trendDirection, trendPeriod, trendPositiveIsGood, decimals }) => {
 	const delta = toNumber(trendValue);
-	// No trend configured → render nothing.
 	if (Number.isNaN(delta)) return null;
-
 	const direction = resolveDirection(trendDirection, delta);
 	const tone = resolveTone(direction, trendPositiveIsGood);
 	const places = Math.max(0, Number(decimals) || 0);
-	const magnitude = Math.abs(delta).toLocaleString(undefined, {
-		minimumFractionDigits: 0,
-		maximumFractionDigits: places,
-	});
-
+	const magnitude = Math.abs(delta).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: places });
 	return (
 		<div className="mc-trend">
-			<span className={`mc-trend-pill mc--${tone}`}>
-				<span className="mc-trend-arrow" aria-hidden="true">{ARROW[direction]}</span>
-				<span>{magnitude}%</span>
-			</span>
+			<span className={`mc-pill mc--${tone}`}>{ARROW[direction]} {magnitude}%</span>
 			{trendPeriod ? <span className="mc-trend-period">{trendPeriod}</span> : null}
 		</div>
 	);
 };
 
-/* ---- Root view -------------------------------------------------- */
-
-const view = (state, { dispatch }) => {
-	const {
-		heading,
-		icon,
-		iconGlyph,
-		iconColor,
-		iconBackgroundColor,
-		clickable,
-	} = state.properties;
-
+/* ---- Root view ------------------------------------------------- */
+const view = (state) => {
+	const { heading, icon, iconGlyph, iconColor, iconBackgroundColor, clickable } = state.properties;
 	const valueText = formatValue(state.properties);
 
 	const iconStyle = {};
 	if (iconColor) iconStyle.color = iconColor;
 	if (iconBackgroundColor) iconStyle.backgroundColor = iconBackgroundColor;
 
-	/* Prefer a literal glyph (always renders); fall back to now-icon, which
-	 * resolves named icons from the instance's icon library. */
 	let iconContent = null;
-	if (iconGlyph) {
-		iconContent = <span className="mc-icon-glyph">{iconGlyph}</span>;
-	} else if (icon) {
-		iconContent = <now-icon icon={icon} size="lg"></now-icon>;
-	}
-
-	const onActivate = clickable
-		? () => dispatch('METRIC_CARD_CLICKED', { heading, value: valueText })
-		: undefined;
+	if (iconGlyph) iconContent = <span className="mc-icon-glyph">{iconGlyph}</span>;
+	else if (icon) iconContent = <now-icon icon={icon} size="lg"></now-icon>;
 
 	return (
-		<div
-			className={`mc-card${clickable ? ' mc-card--clickable' : ''}`}
-			role={clickable ? 'button' : 'group'}
-			tabindex={clickable ? '0' : undefined}
-			aria-label={heading}
-			on-click={onActivate}
-			on-keydown={
-				clickable
-					? (e) => {
-							if (e.key === 'Enter' || e.key === ' ') {
-								e.preventDefault();
-								onActivate();
-							}
-					  }
-					: undefined
-			}
+		<now-card
+			className="mc-card"
+			interaction={clickable ? 'click' : 'none'}
+			configAria={clickable ? { button: { 'aria-label': heading || 'Metric card' } } : undefined}
 		>
-			{iconContent ? (
-				<div className="mc-icon" style={iconStyle} aria-hidden="true">
-					{iconContent}
+			<div className="mc-row">
+				{iconContent ? (
+					<div className="mc-icon" style={iconStyle} aria-hidden="true">{iconContent}</div>
+				) : null}
+				<div className="mc-body">
+					{heading ? <div className="mc-heading">{heading}</div> : null}
+					<div className="mc-value">{valueText}</div>
+					{TrendPill(state.properties)}
 				</div>
-			) : null}
-
-			<div className="mc-body">
-				{heading ? <div className="mc-heading">{heading}</div> : null}
-				<div className="mc-value">{valueText}</div>
-				{TrendPill(state.properties)}
 			</div>
-		</div>
+		</now-card>
 	);
 };
 
@@ -163,39 +112,28 @@ createCustomElement('x-gegis-library-metric-card', {
 	view,
 	styles,
 	properties: {
-		/* Title shown above the value, e.g. "Submissions to Quote Ratio". */
 		heading: { default: 'Submissions to Quote Ratio' },
-		/* A literal glyph shown in the icon tile (text or emoji, e.g. "$", "📈").
-		 * Always renders — no instance icon library needed. Takes precedence over
-		 * `icon`. Leave empty to use a now-icon instead, or hide the tile. */
 		iconGlyph: { default: '$' },
-		/* now-icon glyph name (e.g. "chart-line-outline", "currency-dollar-outline").
-		 * Used only when `iconGlyph` is empty. Resolves from the instance's icon
-		 * library, so it may render blank in a disconnected local preview. */
 		icon: { default: '' },
-		/* Optional icon tile overrides (any CSS color). Empty → theme defaults. */
 		iconColor: { default: '' },
 		iconBackgroundColor: { default: '' },
-		/* The headline metric. Accepts a number or numeric string; formatted per `format`. */
 		value: { default: '25' },
-		/* percent | currency | number | none */
 		format: { default: 'percent' },
-		/* Decimal places used for the value and trend magnitude. */
 		decimals: { default: 2 },
-		/* Symbol prefixed when format === 'currency'. */
 		currencySymbol: { default: '$' },
-		/* Trend delta. Sign drives "auto" direction; magnitude is shown in the pill.
-		 * Empty → the trend pill is hidden. */
 		trendValue: { default: '-4.2' },
-		/* auto | up | down | flat */
 		trendDirection: { default: 'auto' },
-		/* Caption beside the pill, e.g. "MoM", "YoY", "vs last week". */
 		trendPeriod: { default: 'MoM' },
-		/* When true, an upward trend is green (good) and downward is red (bad).
-		 * Set false for "lower is better" metrics (cost, churn, latency …). */
 		trendPositiveIsGood: { default: true },
-		/* When true the whole card is focusable and emits METRIC_CARD_CLICKED. */
 		clickable: { default: false },
 	},
-	actionHandlers: {},
+	actionHandlers: {
+		'NOW_CARD#CLICKED': ({ state, dispatch }) => {
+			if (!state.properties.clickable) return;
+			dispatch('METRIC_CARD_CLICKED', {
+				heading: state.properties.heading,
+				value: formatValue(state.properties),
+			});
+		},
+	},
 });

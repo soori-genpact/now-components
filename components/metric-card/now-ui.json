@@ -1,7 +1,7 @@
 {
 	"components": {
 		"x-gegis-library-metric-card": {
-			"innerComponents": [],
+			"innerComponents": ["now-card", "now-icon"],
 			"uiBuilder": {
 				"associatedTypes": ["global.core", "global.landing-page"],
 				"label": "Metric Card",

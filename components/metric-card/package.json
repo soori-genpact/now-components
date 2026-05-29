@@ -18,9 +18,11 @@
 	"scripts": {
 		"develop": "snc ui-component develop --open",
 		"deploy": "snc ui-component deploy",
-		"test": "snc ui-component test"
+		"test": "snc ui-component test",
+		"develop:au": "snc ui-component develop --open -p australia"
 	},
 	"dependencies": {
+		"@servicenow/now-card": "19.8.2-ecd",
 		"@servicenow/now-icon": "19.8.2-ecd",
 		"@servicenow/sass-kit": "latest",
 		"@servicenow/ui-core": "24.1.1",

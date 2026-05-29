@@ -4,6 +4,21 @@ A configurable KPI / metric card for ServiceNow **Next Experience** (UI Builder)
 Renders an icon tile, a heading, a large formatted value, and an optional trend
 pill — e.g. **↓ 4.2% MoM**.
 
+Built per [SERVICENOW_CUSTOM_COMPONENT_DEV_RULES.md](../../../SERVICENOW_CUSTOM_COMPONENT_DEV_RULES.md):
+
+- **Standard components:** `now-card` (container, shadow, click interaction + a11y)
+  and `now-icon` (icon).
+- **Owned markup — documented §5 exceptions** (no standard component matches the
+  design spec, so these are styled in `styles.scss` to match the Figma exactly):
+  the heading caption, the large KPI value, and the trend pill. `now-heading` renders
+  a fixed heading scale (not a small muted label) and `now-highlighted-value` has a
+  fixed look / no size prop (can't reproduce the soft-pink KPI pill).
+
+> Note: `snc develop` previews against the **public-npm (Rome-era) `now-*`**, which
+> look different from your instance's Horizon versions. The owned parts render
+> identically everywhere; validate the `now-card` chrome on your **Australia
+> instance**.
+
 ```
 ┌──────────────────────────────────────────────┐
 │  ┌────┐   Submissions to Quote Ratio          │
@@ -105,9 +120,29 @@ Requires the global ServiceNow CLI: `npm i -g @servicenow/cli`.
 cd components/metric-card
 npm install
 npm run develop   # snc ui-component develop — local preview + example/
-npm run deploy    # snc ui-component deploy  — push to your instance
+npm run deploy    # snc ui-component deploy  — push to the DEFAULT profile's instance
 npm test          # snc ui-component test
 ```
 
-Configure the target instance / credentials via `snc configure profile` (or the
-`now-cli.json` proxy block) before deploying.
+### Targeting a specific instance / profile
+
+The CLI uses your **default** `snc` profile unless you pass `-p <profile>`.
+
+```bash
+snc configure profile list                 # see profiles
+snc configure profile set --profile australia   # create one (interactive)
+```
+
+To pass the profile through an npm script you MUST use `--` (npm won't forward
+flags otherwise) — `npm run develop -p australia` does NOT work:
+
+```bash
+npm run develop -- -p australia            # → snc ui-component develop --open -p australia
+```
+
+Convenience scripts that bake in the `australia` profile (rename if yours differs):
+
+```bash
+npm run develop:au    # snc ui-component develop --open -p australia
+npm run deploy:au     # snc ui-component deploy -p australia
+```
